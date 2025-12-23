@@ -25,7 +25,6 @@ jobs:
 
       - name: Run mlflow project
         run: |
-          export MLFLOW_TRACKING_URI=./mlruns
           mlflow run . MLProject --env-manager=local
 
       # SECRETS di GitHub
