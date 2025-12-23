@@ -37,6 +37,8 @@ jobs:
         run: |
           git config --global user.name ${{ secrets.username }}
           git config --global user.email ${{ secrets.email }}
-          git add mlruns/
-          git commit -m "Save mlruns from CI run" || true
-          git push origin main || true
+          if [ -d "mlruns" ]; then
+            git add mlruns/
+            git commit -m "Save mlruns from CI run" || true
+            git push origin main || true
+          fi
