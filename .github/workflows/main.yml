@@ -25,7 +25,7 @@ jobs:
 
       - name: Run mlflow project
         run: |
-          mlflow run MLProject --env-manager=local
+          mlflow run ./MLProject --env-manager=local
 
       # SECRETS di GitHub
       - name: Save mlruns to repo
