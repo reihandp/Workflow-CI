@@ -7,7 +7,7 @@ import os
 import warnings
 import sys
 
-if __name__ == "__main__":
+if __name__ == "__main__": 
     warnings.filterwarnings("ignore")
     np.random.seed(40)
 
@@ -21,7 +21,7 @@ if __name__ == "__main__":
 
     data = pd.read_csv(file_path)
 
-    # 2. Split Data (Target: HeartDisease sesuai dataset lu)
+    # 2. Split Data (Target:  HeartDisease sesuai dataset)
     X = data.drop("HeartDisease", axis=1)
     y = data["HeartDisease"]
     
@@ -30,23 +30,24 @@ if __name__ == "__main__":
     )
 
     # 3. Ambil Parameter Model
-    n_estimators = int(sys.argv[1]) if len(sys.argv) > 1 else 100
+    n_estimators = int(sys. argv[1]) if len(sys.argv) > 1 else 100
     max_depth = int(sys.argv[2]) if len(sys.argv) > 2 else 10
 
     # 4. Training & Logging ke MLflow
-    with mlflow.start_run():
-        model = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth)
-        model.fit(X_train, y_train)
+    mlflow.log_param("n_estimators", n_estimators)
+    mlflow.log_param("max_depth", max_depth)
+    
+    model = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth)
+    model.fit(X_train, y_train)
 
-        mlflow.sklearn.log_model(
-            sk_model=model,
-            artifact_path="model",
-            input_example=X_train[0:5]
-        )
+    mlflow.sklearn.log_model(
+        sk_model=model,
+        artifact_path="model",
+        input_example=X_train[0:5]
+    )
 
-        # Log Metrics
-        accuracy = model.score(X_test, y_test)
-        mlflow.log_metric("accuracy", accuracy)
-        
-        print(f"✅ Berhasil! Akurasi: {accuracy:.4f} dengan n_est: {n_estimators}")
-
+    # Log Metrics
+    accuracy = model.score(X_test, y_test)
+    mlflow.log_metric("accuracy", accuracy)
+    
+    print(f"✅ Berhasil!  Akurasi:  {accuracy:.4f} dengan n_est:  {n_estimators}")
