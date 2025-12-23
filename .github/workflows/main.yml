@@ -6,39 +6,106 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: write
+
 jobs:
-  build:
+  basic:
+    name: Basic CI
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      # Set up job
+      - name: Set up job
+        run: |
+          echo "Starting job..."
+          echo "GitHub workflow: ${{ github.workflow }}"
+          echo "Run ID: ${{ github.run_id }}"
+          echo "Runner OS: ${{ runner.os }}"
+          echo "Branch: ${{ github.ref_name }}"
+          # Pastikan MLflow menulis ke mlruns di root repo
+          echo "MLFLOW_TRACKING_URI=file:./mlruns" >> $GITHUB_ENV
+          echo "PYTHONUNBUFFERED=1" >> $GITHUB_ENV
 
+      # Run actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      # Set up Python 3.12.7
       - name: Set up Python 3.12.7
         uses: actions/setup-python@v4
         with:
           python-version: "3.12.7"
+          cache: "pip"
 
+      # Check Env
+      - name: Check Env
+        run: |
+          python --version
+          pip --version
+          echo "Tracking URI (will be set after install): $MLFLOW_TRACKING_URI"
+          echo "PATH: $PATH"
+          env | sort | sed -n '1,100p'
+
+      # Install dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install mlflow pandas scikit-learn
 
-      - name: Clean old mlruns
-        run: |
-          rm -rf mlruns/
-
+      # Run mlflow project
       - name: Run mlflow project
+        env:
+          MLFLOW_TRACKING_URI: file:./mlruns
         run: |
-          cd MLProject
-          mlflow run .  --env-manager=local
+          mlflow --version
+          mlflow run MLProject --env-manager=local
 
-      # SECRETS di GitHub
-      - name: Save mlruns to repo
+      # Get latest MLflow run_id
+      - name: Get latest MLflow run_id
+        id: latest_run
+        env:
+          MLFLOW_TRACKING_URI: file:./mlruns
         run: |
-          git config --global user.name ${{ secrets.username }}
-          git config --global user.email ${{ secrets.email }}
+          python - <<'PY'
+          import os
+          from mlflow.tracking import MlflowClient
+          client = MlflowClient()
+          exps = client.list_experiments()
+          # Cari experiment "Default" jika ada, jika tidak ambil yang pertama
+          exp_id = None
+          for e in exps:
+              if e.name == "Default":
+                  exp_id = e.experiment_id
+                  break
+          if exp_id is None and exps:
+              exp_id = exps[0].experiment_id
+          run_id = ""
+          if exp_id is not None:
+              runs = client.search_runs([exp_id], order_by=["attributes.start_time DESC"], max_results=1)
+              if runs:
+                  run_id = runs[0].info.run_id
+          print(f"Latest run_id: {run_id}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"run_id={run_id}\n")
+          PY
+
+      - name: Show latest run_id
+        run: echo "Latest MLflow run_id is: ${{ steps.latest_run.outputs.run_id }}"
+
+      # Save mlruns to repo
+      - name: Save mlruns to repo
+        if: ${{ always() }}
+        run: |
+          git config --global user.name "${{ secrets.username }}"
+          git config --global user.email "${{ secrets.email }}"
           if [ -d "mlruns" ]; then
             git add mlruns/
-            git commit -m "Save mlruns from CI run" || true
-            git push origin main || true
+            git commit -m "Save mlruns from CI run ${{ steps.latest_run.outputs.run_id }}" || true
+            git push origin ${{ github.ref_name }} || true
+          else
+            echo "mlruns directory not found at repo root"
           fi
