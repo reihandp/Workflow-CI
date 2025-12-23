@@ -38,7 +38,6 @@ if __name__ == "__main__":
         model = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth)
         model.fit(X_train, y_train)
 
-        # Log Model secara manual (Syarat Basic/Skilled)
         mlflow.sklearn.log_model(
             sk_model=model,
             artifact_path="model",
@@ -50,3 +49,4 @@ if __name__ == "__main__":
         mlflow.log_metric("accuracy", accuracy)
         
         print(f"✅ Berhasil! Akurasi: {accuracy:.4f} dengan n_est: {n_estimators}")
+
